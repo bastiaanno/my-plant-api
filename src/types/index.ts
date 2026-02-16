@@ -11,13 +11,13 @@ export type Activity = {
   id: string;
   title: string;
   description: string;
-  venue: string;
-  startTime: Date;
-  endTime: Date;
-  signupDeadline: Date;
+  // venue: string; // Not currently provided by the API, but could be added in the future
+  datetime: Date;
+  //endTime: Date; // Not currently provided by the API, but could be added in the future
+  //signupDeadline: Date; // Not currently provided by the API, but could be added in the future
   committee: string;
   poster?: string;
-  totalSignups: number;
+  totalSignUps: number;
   userStatus: {
     signedUp: boolean;
     signupId?: string;
