@@ -104,3 +104,5 @@ async function postWudje(message: string) {
     console.error("Error posting wudje:", err);
   }
 }
+
+getActivities();

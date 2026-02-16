@@ -17,6 +17,13 @@ export type Activity = {
   signupDeadline: Date;
   committee: string;
   poster?: string;
+  totalSignups: number;
+  userStatus: {
+    signedUp: boolean;
+    signupId?: string;
+    onWaitlist: boolean;
+    waitlistId?: string;
+  };
 };
 
 export type ActivitySignup = {
