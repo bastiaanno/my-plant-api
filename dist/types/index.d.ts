@@ -10,12 +10,16 @@ export type Activity = {
     id: string;
     title: string;
     description: string;
-    venue: string;
-    startTime: Date;
-    endTime: Date;
-    signupDeadline: Date;
+    datetime: Date;
     committee: string;
     poster?: string;
+    totalSignUps: number;
+    userStatus: {
+        signedUp: boolean;
+        signupId?: string;
+        onWaitlist: boolean;
+        waitlistId?: string;
+    };
 };
 export type ActivitySignup = {
     type: "signup" | "waitlist";

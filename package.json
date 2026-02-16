@@ -13,6 +13,9 @@
   "exports": {
     ".": {
       "import": "./src/index.ts"
+    },
+    "./types": {
+      "import": "./src/types/index.ts"
     }
   },
   "dependencies": {
