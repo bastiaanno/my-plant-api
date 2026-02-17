@@ -7,7 +7,7 @@ JavaScript/TypeScript client for the Semper Florens (my-plant) API. Works in Nod
 ## Features
 
 - User authentication
-- Manage activities (view, join, remove)
+- Manage activities (view, join, unjoin)
 - Handle WUD messages (view, post)
 - Written in TypeScript with full type support
 - Compatible with Node.js, React Native, and Expo (uses global `fetch`)
