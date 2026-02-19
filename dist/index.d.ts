@@ -1,19 +1,21 @@
 import type { Activity, ActivitySignup, PostWudjeRequest, RemoveRegistration, Wud } from "./types";
 type LoginResponse = {
-    success: boolean;
-    token: string;
-    user: {
-        id: string;
-        email: string;
-        username: string;
-        name: string;
-        isAdmin: boolean;
-        registrationDate: Date;
+    data: {
+        success: boolean;
+        token: string;
+        user: {
+            id: string;
+            email: string;
+            username: string;
+            name: string;
+            isAdmin: boolean;
+            registrationDate: Date;
+        };
     };
+    header: string | null;
 };
 export default class MyPlantClient {
     baseUrl: string;
-    token: string | null;
     constructor(baseUrl?: string);
     login(username: string, password: string): Promise<LoginResponse>;
     getActivities(): Promise<Activity[]>;

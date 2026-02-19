@@ -8,10 +8,43 @@ const getFetch = () => {
     return require("node-fetch");
 };
 const fetchFn = getFetch();
+// MMKV integration for React Native
+let mmkv = null;
+let isMMKVAvailable = false;
+try {
+    // Dynamically require createMMKV if available (for React Native)
+    const { createMMKV } = require("react-native-mmkv");
+    mmkv = createMMKV(); // Use default instance
+    isMMKVAvailable = !!mmkv;
+}
+catch (e) {
+    // Not in React Native or MMKV not installed
+    isMMKVAvailable = false;
+}
+// Storage abstraction for pb_auth cookie
+const PB_AUTH_KEY = "pb_auth_cookie";
+const storage = {
+    set: (value) => {
+        if (isMMKVAvailable && mmkv) {
+            mmkv.set(PB_AUTH_KEY, value);
+        }
+        else {
+            storage._memory = value;
+        }
+    },
+    get: () => {
+        if (isMMKVAvailable && mmkv) {
+            return mmkv.getString(PB_AUTH_KEY) || null;
+        }
+        else {
+            return storage._memory || null;
+        }
+    },
+    _memory: null,
+};
 export default class MyPlantClient {
     constructor(baseUrl = "https://semper-florens.nl/api") {
         this.baseUrl = baseUrl;
-        this.token = null;
     }
     async login(username, password) {
         const res = await fetchFn(`${this.baseUrl}/login`, {
@@ -22,8 +55,20 @@ export default class MyPlantClient {
         if (!res.ok)
             throw new Error(await res.text());
         const data = await res.json();
-        this.token = data.token;
-        return data;
+        // Try to get pb_auth cookie from Set-Cookie header
+        const setCookie = res.headers.get("set-cookie") || res.headers.get("Set-Cookie");
+        let pbAuthCookie = null;
+        if (setCookie) {
+            // Find pb_auth cookie value
+            const match = setCookie.match(/pb_auth=([^;]+);/);
+            if (match) {
+                pbAuthCookie = match[1];
+            }
+        }
+        if (pbAuthCookie) {
+            storage.set(pbAuthCookie);
+        }
+        return { data, header: setCookie };
     }
     async getActivities() {
         return (await this._request("GET", "/activities")).data;
@@ -44,18 +89,24 @@ export default class MyPlantClient {
         return this._request("POST", "/wudjes", info);
     }
     async _request(method, path, body) {
+        const pbAuthCookie = storage.get();
+        if (!pbAuthCookie && path !== "/login") {
+            throw new Error("Not authenticated. Please login first.");
+        }
         const headers = {
             "Content-Type": "application/json",
         };
-        if (this.token)
-            headers["Authorization"] = `Bearer ${this.token}`;
-        const res = await fetchFn(`${this.baseUrl}${path}`, {
+        const fetchOptions = {
             method,
             headers,
             body: body ? JSON.stringify(body) : undefined,
-        });
+        };
+        if (pbAuthCookie) {
+            headers["Cookie"] = `pb_auth=${pbAuthCookie}`;
+        }
+        const res = await fetchFn(`${this.baseUrl}${path}`, fetchOptions);
         if (!res.ok)
-            throw new Error(`Request failed: ${res.status}`);
+            throw new Error(`Request failed: ${res.status}, ${await res.text()}`);
         return await res.json();
     }
 }
