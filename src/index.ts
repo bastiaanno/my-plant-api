@@ -7,16 +7,19 @@ import type {
 } from "./types";
 
 type LoginResponse = {
-  success: boolean;
-  token: string;
-  user: {
-    id: string;
-    email: string;
-    username: string;
-    name: string;
-    isAdmin: boolean;
-    registrationDate: Date;
+  data: {
+    success: boolean;
+    token: string;
+    user: {
+      id: string;
+      email: string;
+      username: string;
+      name: string;
+      isAdmin: boolean;
+      registrationDate: Date;
+    };
   };
+  header: string | null;
 };
 
 // React Native compatibility: use global fetch if available, otherwise require node-fetch
@@ -31,12 +34,43 @@ const getFetch = () => {
 
 const fetchFn: typeof fetch = getFetch();
 
+// MMKV integration for React Native
+let mmkv: any = null;
+let isMMKVAvailable = false;
+try {
+  // Dynamically require createMMKV if available (for React Native)
+  const { createMMKV } = require("react-native-mmkv");
+  mmkv = createMMKV(); // Use default instance
+  isMMKVAvailable = !!mmkv;
+} catch (e) {
+  // Not in React Native or MMKV not installed
+  isMMKVAvailable = false;
+}
+
+// Storage abstraction for pb_auth cookie
+const PB_AUTH_KEY = "pb_auth_cookie";
+const storage = {
+  set: (value: string) => {
+    if (isMMKVAvailable && mmkv) {
+      mmkv.set(PB_AUTH_KEY, value);
+    } else {
+      storage._memory = value;
+    }
+  },
+  get: (): string | null => {
+    if (isMMKVAvailable && mmkv) {
+      return mmkv.getString(PB_AUTH_KEY) || null;
+    } else {
+      return storage._memory || null;
+    }
+  },
+  _memory: null as string | null,
+};
+
 export default class MyPlantClient {
   baseUrl: string;
-  token: string | null;
   constructor(baseUrl = "https://semper-florens.nl/api") {
     this.baseUrl = baseUrl;
-    this.token = null;
   }
 
   async login(username: string, password: string): Promise<LoginResponse> {
@@ -47,8 +81,21 @@ export default class MyPlantClient {
     });
     if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
-    this.token = data.token;
-    return data;
+    // Try to get pb_auth cookie from Set-Cookie header
+    const setCookie =
+      res.headers.get("set-cookie") || res.headers.get("Set-Cookie");
+    let pbAuthCookie = null;
+    if (setCookie) {
+      // Find pb_auth cookie value
+      const match = setCookie.match(/pb_auth=([^;]+);/);
+      if (match) {
+        pbAuthCookie = match[1];
+      }
+    }
+    if (pbAuthCookie) {
+      storage.set(pbAuthCookie);
+    }
+    return { data, header: setCookie };
   }
 
   async getActivities(): Promise<Activity[]> {
@@ -76,16 +123,24 @@ export default class MyPlantClient {
   }
 
   async _request(method: "GET" | "POST" | "DELETE", path: string, body?: any) {
+    const pbAuthCookie = storage.get();
+    if (!pbAuthCookie && path !== "/login") {
+      throw new Error("Not authenticated. Please login first.");
+    }
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (this.token) headers["Authorization"] = `Bearer ${this.token}`;
-    const res = await fetchFn(`${this.baseUrl}${path}`, {
+    const fetchOptions: any = {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
-    });
-    if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+    };
+    if (pbAuthCookie) {
+      headers["Cookie"] = `pb_auth=${pbAuthCookie}`;
+    }
+    const res = await fetchFn(`${this.baseUrl}${path}`, fetchOptions);
+    if (!res.ok)
+      throw new Error(`Request failed: ${res.status}, ${await res.text()}`);
     return await res.json();
   }
 }
