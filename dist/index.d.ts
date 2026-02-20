@@ -14,16 +14,11 @@ type LoginResponse = {
     };
     header: string | null;
 };
-export type Session = {
-    token: string;
-    expirationDate?: Date;
-};
 export default class MyPlantClient {
     baseUrl: string;
     constructor(baseUrl?: string);
     login(username: string, password: string): Promise<LoginResponse>;
     logout(): Promise<void>;
-    getSession(): Promise<Session | null>;
     getUser(): Promise<User | null>;
     getActivities(): Promise<Activity[]>;
     getActivity({ activityId }: {

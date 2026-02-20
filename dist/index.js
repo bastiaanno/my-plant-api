@@ -2,65 +2,27 @@
 import { createMMKV } from "react-native-mmkv";
 const mmkv = createMMKV(); // Use default instance
 const isMMKVAvailable = !!mmkv;
+// Session type removed; cookie is stored directly
 // React Native compatibility: use global fetch
 const fetchFn = globalThis.fetch.bind(globalThis);
-// Storage abstraction for pb_auth cookie
+// Storage abstraction for pb_auth cookie (full cookie string)
 const PB_AUTH_KEY = "pb_auth_cookie";
 const USER_DATA_KEY = "pb_user_data";
-const SESSION_KEY = "pb_session";
 const storage = {
-    setSession: async (session) => {
-        // Always decode and parse pb_auth cookie as JSON
-        let parsedSession;
-        try {
-            parsedSession = JSON.parse(decodeURIComponent(session.token));
-        }
-        catch (e) {
-            // If parsing fails, do not store session
-            return;
-        }
-        // Only store session if the original cookie string contains pb_auth and Expires keys
-        const rawCookie = encodeURIComponent(session.token);
-        // The original cookie string is URL-encoded, so decode it for searching
-        const cookieStr = decodeURIComponent(rawCookie);
-        if (!(cookieStr.includes('pb_auth') && cookieStr.match(/Expires=/i))) {
-            if (isMMKVAvailable && mmkv) {
-                mmkv.remove(SESSION_KEY);
-            }
-            else {
-                storage._session = null;
-            }
-            return;
-        }
-        const sessionToStore = {
-            token: parsedSession.token,
-            record: parsedSession.record,
-            expirationDate: session.expirationDate,
-        };
+    setCookie: async (cookie) => {
         if (isMMKVAvailable && mmkv) {
-            mmkv.set(SESSION_KEY, JSON.stringify(sessionToStore));
+            mmkv.set(PB_AUTH_KEY, cookie);
         }
         else {
-            storage._session = sessionToStore;
+            storage._cookie = cookie;
         }
     },
-    getSession: async () => {
+    getCookie: async () => {
         if (isMMKVAvailable && mmkv) {
-            const str = mmkv.getString(SESSION_KEY);
-            if (!str)
-                return null;
-            const obj = JSON.parse(str);
-            if (obj && obj.expirationDate) {
-                obj.expirationDate = new Date(obj.expirationDate);
-            }
-            return obj;
+            return mmkv.getString(PB_AUTH_KEY) || null;
         }
         else {
-            const obj = storage._session || null;
-            if (obj && obj.expirationDate && typeof obj.expirationDate === "string") {
-                obj.expirationDate = new Date(obj.expirationDate);
-            }
-            return obj;
+            return storage._cookie || null;
         }
     },
     setUser: async (userData) => {
@@ -80,16 +42,16 @@ const storage = {
             return storage._user || null;
         }
     },
-    _session: null,
+    _cookie: null,
     _user: null,
 };
 const clearStorage = () => {
     if (isMMKVAvailable && mmkv) {
         mmkv.remove(USER_DATA_KEY);
-        mmkv.remove(SESSION_KEY);
+        mmkv.remove(PB_AUTH_KEY);
     }
     else {
-        storage._session = null;
+        storage._cookie = null;
         storage._user = null;
     }
 };
@@ -102,39 +64,22 @@ export default class MyPlantClient {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: username, password: password }),
+            credentials: "include", // Ensure cookies are handled automatically
         });
         if (!res.ok)
             throw new Error(await res.text());
         const data = await res.json();
-        // Try to get pb_auth cookie from Set-Cookie header
+        // Store full cookie string if present
         const setCookie = res.headers.get("set-cookie") || res.headers.get("Set-Cookie");
-        console.log(setCookie);
-        let pbAuthCookie = null;
-        let expirationDate = undefined;
         if (setCookie) {
-            // Find pb_auth cookie value
-            const pb_auth_ = setCookie.match(/pb_auth=([^;]+);/);
-            const expires_ = setCookie.match(/Expires=([^;]+);/);
-            if (pb_auth_) {
-                pbAuthCookie = pb_auth_[1];
-            }
-            if (expires_) {
-                expirationDate = new Date(expires_[1]);
-            }
+            await storage.setCookie(setCookie);
         }
-        if (pbAuthCookie) {
-            await storage.setSession({ token: pbAuthCookie, expirationDate });
-            if (data?.user)
-                await storage.setUser(data.user);
-            console.log("Login successful, session and user data stored.");
-        }
+        if (data?.user)
+            await storage.setUser(data.user);
         return { data, header: setCookie };
     }
     async logout() {
         clearStorage();
-    }
-    async getSession() {
-        return await storage.getSession();
     }
     async getUser() {
         return await storage.getUser();
@@ -158,10 +103,8 @@ export default class MyPlantClient {
         return this._request("POST", "/wudjes", info);
     }
     async _request(method, path, body) {
-        const session = await storage.getSession();
-        if ((!session || !session.token) && path !== "/login") {
-            throw new Error("Not authenticated. Please login first.");
-        }
+        // No manual session token check; rely on cookie
+        const cookie = await storage.getCookie();
         const headers = {
             "Content-Type": "application/json",
         };
@@ -169,31 +112,21 @@ export default class MyPlantClient {
             method,
             headers,
             body: body ? JSON.stringify(body) : undefined,
+            credentials: "include", // Ensure cookies are handled automatically
         };
-        if (session && session.token) {
-            headers["Cookie"] = `pb_auth=${session.token}`;
+        // Optionally attach cookie header if needed (for environments where fetch doesn't handle cookies)
+        if (cookie) {
+            headers["Cookie"] = cookie;
         }
         const res = await fetchFn(`${this.baseUrl}${path}`, fetchOptions);
-        // Extract and update session cookie if present in response
+        // Update stored cookie if present in response
         const setCookie = res.headers.get("set-cookie") || res.headers.get("Set-Cookie");
         if (setCookie) {
-            // Find pb_auth cookie value
-            const pb_auth_ = setCookie.match(/pb_auth=([^;]+);/);
-            const expires_ = setCookie.match(/Expires=([^;]+);/);
-            let pbAuthCookie = null;
-            let expirationDate = undefined;
-            if (pb_auth_) {
-                pbAuthCookie = pb_auth_[1];
-            }
-            if (expires_) {
-                expirationDate = new Date(expires_[1]);
-            }
-            if (pbAuthCookie) {
-                await storage.setSession({ token: pbAuthCookie, expirationDate });
-            }
+            await storage.setCookie(setCookie);
         }
-        if (!res.ok)
+        if (!res.ok) {
             throw new Error(`Request failed: ${res.status}, ${await res.text()}`);
+        }
         return await res.json();
     }
 }
