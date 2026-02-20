@@ -42,18 +42,39 @@ const USER_DATA_KEY = "pb_user_data";
 const SESSION_KEY = "pb_session";
 const storage = {
   setSession: async (session: Session) => {
+    // Ensure token is not double-encoded
+    let token = session.token;
+    try {
+      // If token is a JSON string, parse and extract token
+      const parsed = JSON.parse(decodeURIComponent(token));
+      if (parsed && parsed.token) {
+        token = parsed.token;
+      }
+    } catch (e) {
+      // Not JSON, keep as is
+    }
+    const sessionToStore = { ...session, token };
     if (isMMKVAvailable && mmkv) {
-      mmkv.set(SESSION_KEY, JSON.stringify(session));
+      mmkv.set(SESSION_KEY, JSON.stringify(sessionToStore));
     } else {
-      storage._session = session;
+      storage._session = sessionToStore;
     }
   },
   getSession: async (): Promise<Session | null> => {
     if (isMMKVAvailable && mmkv) {
       const str = mmkv.getString(SESSION_KEY);
-      return str ? JSON.parse(str) : null;
+      if (!str) return null;
+      const obj = JSON.parse(str);
+      if (obj && obj.expirationDate) {
+        obj.expirationDate = new Date(obj.expirationDate);
+      }
+      return obj;
     } else {
-      return storage._session || null;
+      const obj = storage._session || null;
+      if (obj && obj.expirationDate && typeof obj.expirationDate === "string") {
+        obj.expirationDate = new Date(obj.expirationDate);
+      }
+      return obj;
     }
   },
   setUser: async (userData: any) => {
