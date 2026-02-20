@@ -203,7 +203,9 @@ export default class MyPlantClient {
     }
     const res = await fetchFn(`${this.baseUrl}${path}`, fetchOptions);
     // Extract and update session cookie if present in response
-    const setCookie = res.headers.get("set-cookie") || res.headers.get("Set-Cookie");
+    const setCookie =
+      res.headers.get("set-cookie") || res.headers.get("Set-Cookie");
+    console.log(setCookie);
     if (setCookie) {
       // Find pb_auth cookie value
       const pb_auth_ = setCookie.match(/pb_auth=([^;]+);/);
