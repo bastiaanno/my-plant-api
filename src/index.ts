@@ -50,8 +50,11 @@ const storage = {
       // If parsing fails, do not store session
       return;
     }
-    // Only store session if token and record are valid
-    if (!parsedSession.token || !parsedSession.record) {
+    // Only store session if the original cookie string contains pb_auth and Expires keys
+    const rawCookie = encodeURIComponent(session.token);
+    // The original cookie string is URL-encoded, so decode it for searching
+    const cookieStr = decodeURIComponent(rawCookie);
+    if (!(cookieStr.includes("pb_auth") && cookieStr.match(/Expires=/i))) {
       if (isMMKVAvailable && mmkv) {
         mmkv.remove(SESSION_KEY);
       } else {
