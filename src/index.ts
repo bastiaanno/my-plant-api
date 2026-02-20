@@ -107,7 +107,7 @@ export default class MyPlantClient {
     if (setCookie) {
       // Find pb_auth cookie value
       const pb_auth_ = setCookie.match(/pb_auth=([^;]+);/);
-      const expires_ = setCookie.match(/expires=([^;]+);/);
+      const expires_ = setCookie.match(/Expires=([^;]+);/);
       if (pb_auth_) {
         pbAuthCookie = pb_auth_[1];
       }
