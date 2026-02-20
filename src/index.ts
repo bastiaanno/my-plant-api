@@ -123,6 +123,7 @@ export default class MyPlantClient {
     // Try to get pb_auth cookie from Set-Cookie header
     const setCookie =
       res.headers.get("set-cookie") || res.headers.get("Set-Cookie");
+    console.log(setCookie);
     let pbAuthCookie = null;
     let expirationDate: Date | undefined = undefined;
     if (setCookie) {
