@@ -60,13 +60,20 @@ const isReactNative =
 let fs: typeof import("fs") | null = null;
 let path: typeof import("path") | null = null;
 let COOKIE_FILE: string = "./pb_auth_cookie";
+
+function isReactNativeEnv() {
+  // React Native sets navigator.product to 'ReactNative'
+  return (
+    typeof navigator !== "undefined" && navigator.product === "ReactNative"
+  );
+}
 const storage = {
   set: async (value: string, userData?: any) => {
     if (isMMKVAvailable && mmkv) {
       console.log("[storage] Using MMKV for pb_auth");
       mmkv.set(PB_AUTH_KEY, value);
       if (userData) mmkv.set(USER_DATA_KEY, JSON.stringify(userData));
-    } else if (isNode && !isReactNative) {
+    } else if (isNode && !isReactNativeEnv()) {
       if (!fs || !path) {
         fs = await import("fs");
         path = await import("path");
@@ -98,7 +105,7 @@ const storage = {
     if (isMMKVAvailable && mmkv) {
       console.log("[storage] Reading pb_auth from MMKV");
       return mmkv.getString(PB_AUTH_KEY) || null;
-    } else if (isNode && !isReactNative) {
+    } else if (isNode && !isReactNativeEnv()) {
       if (!fs || !path) {
         fs = await import("fs");
         path = await import("path");
@@ -124,7 +131,7 @@ const storage = {
   setUser: async (userData: any) => {
     if (isMMKVAvailable && mmkv) {
       mmkv.set(USER_DATA_KEY, JSON.stringify(userData));
-    } else if (isNode && !isReactNative) {
+    } else if (isNode && !isReactNativeEnv()) {
       if (!fs || !path) {
         fs = await import("fs");
         path = await import("path");
@@ -146,7 +153,7 @@ const storage = {
     if (isMMKVAvailable && mmkv) {
       const str = mmkv.getString(USER_DATA_KEY);
       return str ? JSON.parse(str) : null;
-    } else if (isNode && !isReactNative) {
+    } else if (isNode && !isReactNativeEnv()) {
       if (!fs || !path) {
         fs = await import("fs");
         path = await import("path");
