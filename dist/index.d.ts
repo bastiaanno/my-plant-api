@@ -1,4 +1,4 @@
-import type { Activity, ActivitySignup, PostWudjeRequest, RemoveRegistration, Wud } from "./types";
+import type { Activity, ActivitySignup, PostWudjeRequest, RemoveRegistration, User, Wud } from "./types";
 type LoginResponse = {
     data: {
         success: boolean;
@@ -14,10 +14,14 @@ type LoginResponse = {
     };
     header: string | null;
 };
+type Session = string;
 export default class MyPlantClient {
     baseUrl: string;
     constructor(baseUrl?: string);
     login(username: string, password: string): Promise<LoginResponse>;
+    logout(): Promise<void>;
+    getSession(): Promise<Session | null>;
+    getUser(): Promise<User | null>;
     getActivities(): Promise<Activity[]>;
     getActivity({ activityId }: {
         activityId: string;
