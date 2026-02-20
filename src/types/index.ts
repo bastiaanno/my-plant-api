@@ -5,6 +5,7 @@ export type User = {
   username: string;
   isAdmin: boolean;
   registrationDate: Date;
+  expirationDate?: Date;
 };
 
 export type Activity = {
@@ -13,6 +14,7 @@ export type Activity = {
   description: string;
   // venue: string; // Not currently provided by the API, but could be added in the future
   datetime: Date;
+  expirationDate?: Date;
   //endTime: Date; // Not currently provided by the API, but could be added in the future
   //signupDeadline: Date; // Not currently provided by the API, but could be added in the future
   committee: string;

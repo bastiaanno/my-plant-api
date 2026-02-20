@@ -5,12 +5,14 @@ export type User = {
     username: string;
     isAdmin: boolean;
     registrationDate: Date;
+    expirationDate?: Date;
 };
 export type Activity = {
     id: string;
     title: string;
     description: string;
     datetime: Date;
+    expirationDate?: Date;
     committee: string;
     poster?: string;
     totalSignUps: number;

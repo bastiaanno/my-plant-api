@@ -1,108 +1,43 @@
 import "dotenv/config";
 import MyPlantClient from "../src/index.ts";
-import { promises as fs } from "fs";
-import "dotenv/config";
-
-// Global token variable
-let token: string | null = null;
 
 const client = new MyPlantClient(process.env.MYPLANT_API_URL);
 
-async function loadToken() {
-  if (token) return token;
-  try {
-    token = (await fs.readFile(".token", "utf-8")).trim();
-    client.token = token;
-    return token;
-  } catch {
-    return null;
-  }
-}
-
-async function saveToken(newToken: string) {
-  token = newToken;
-  client.token = newToken;
-  await fs.writeFile(".token", newToken, "utf-8");
-}
-
-async function ensureToken() {
-  if (client.token) return;
-  if (!(await loadToken())) {
-    const { token: newToken } = await client.login(
-      process.env.MYPLANT_USERNAME!,
-      process.env.MYPLANT_PASSWORD!,
+async function login() {
+  const username = process.env.MYPLANT_USERNAME;
+  const password = process.env.MYPLANT_PASSWORD;
+  if (!username || !password) {
+    throw new Error(
+      "Please set MYPLANT_USERNAME and MYPLANT_PASSWORD in your .env file",
     );
-    await saveToken(newToken);
   }
+  await client.login(username, password);
 }
 
-async function getActivities() {
-  await ensureToken();
-  try {
-    const activities = await client.getActivities();
-    console.log("Activities:", activities);
-  } catch (err) {
-    console.error("Error fetching activities:", err);
+async function test() {
+  console.log("Testing MyPlantClient...");
+  const session = await client.getSession(); // Check if already logged in
+  if (session) {
+    const user = await client.getUser();
+    console.log(`Already logged in as `, user);
   }
+  if (!session) {
+    console.log("Not logged in, logging in...");
+    await login();
+    console.log("Logged in successfully!");
+  }
+  const activities = await client.getActivities();
+  console.log(`Fetched ${activities.length} activities.`);
+
+  if (activities.length > 0) {
+    const activity = await client.getActivity({ activityId: activities[0].id });
+    console.log(`Fetched activity: ${activity.title}`);
+  }
+
+  const wudjes = await client.getWudjes();
+  console.log(`Fetched ${wudjes.length} wudjes.`);
 }
 
-async function getAcivity(activityId: string) {
-  await ensureToken();
-  try {
-    const activity = await client.getActivity({ activityId });
-    console.log("Activity:", activity);
-  } catch (err) {
-    console.error("Error fetching activity:", err);
-  }
-}
-
-async function signUpForActivity(activityId: string) {
-  await ensureToken();
-  try {
-    await client.joinActivity(activityId, {
-      type: "signup",
-      answers: {},
-    });
-    console.log(`Successfully signed up for activity ${activityId}`);
-  } catch (err) {
-    console.error("Error signing up for activity:", err);
-  }
-}
-
-async function unregisterFromActivity(activityId: string) {
-  await ensureToken();
-  try {
-    await client.removeActivity({
-      type: "signout",
-      id: activityId,
-    });
-    console.log(`Successfully unregistered from activity ${activityId}`);
-  } catch (err) {
-    console.error("Error unregistering from activity:", err);
-  }
-}
-
-async function listWudjes() {
-  await ensureToken();
-  try {
-    const wudjes = await client.getWudjes();
-    console.log(
-      "Wudjes:",
-      wudjes.map((w) => `${w.author.name}: ${w.message}`).join("\n"),
-    );
-  } catch (err) {
-    console.error("Error fetching wudjes:", err);
-  }
-}
-
-async function postWudje(message: string) {
-  await ensureToken();
-  try {
-    await client.postWudje({ message });
-    console.log("Successfully posted wudje");
-  } catch (err) {
-    console.error("Error posting wudje:", err);
-  }
-}
-
-getActivities();
+test().catch((err) => {
+  console.error("Test failed:", err);
+});
