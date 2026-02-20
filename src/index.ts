@@ -195,6 +195,24 @@ export default class MyPlantClient {
       headers["Cookie"] = `pb_auth=${session.token}`;
     }
     const res = await fetchFn(`${this.baseUrl}${path}`, fetchOptions);
+    // Extract and update session cookie if present in response
+    const setCookie = res.headers.get("set-cookie") || res.headers.get("Set-Cookie");
+    if (setCookie) {
+      // Find pb_auth cookie value
+      const pb_auth_ = setCookie.match(/pb_auth=([^;]+);/);
+      const expires_ = setCookie.match(/Expires=([^;]+);/);
+      let pbAuthCookie = null;
+      let expirationDate = undefined;
+      if (pb_auth_) {
+        pbAuthCookie = pb_auth_[1];
+      }
+      if (expires_) {
+        expirationDate = new Date(expires_[1]);
+      }
+      if (pbAuthCookie) {
+        await storage.setSession({ token: pbAuthCookie, expirationDate });
+      }
+    }
     if (!res.ok)
       throw new Error(`Request failed: ${res.status}, ${await res.text()}`);
     return await res.json();
