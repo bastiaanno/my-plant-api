@@ -1,10 +1,3 @@
-// Custom error for session expiration/invalidity
-export class SessionExpiredError extends Error {
-    constructor(message = "Session expired or invalid.") {
-        super(message);
-        this.name = "SessionExpiredError";
-    }
-}
 // MMKV integration for React Native
 import { createMMKV } from "react-native-mmkv";
 const mmkv = createMMKV(); // Use default instance
@@ -17,20 +10,19 @@ const USER_DATA_KEY = "pb_user_data";
 const SESSION_KEY = "pb_session";
 const storage = {
     setSession: async (session) => {
-        // Always decode and parse pb_auth cookie as JSON
-        let parsedSession = null;
+        // Ensure token is not double-encoded
+        let token = session.token;
         try {
-            parsedSession = JSON.parse(decodeURIComponent(session.token));
+            // If token is a JSON string, parse and extract token
+            const parsed = JSON.parse(decodeURIComponent(token));
+            if (parsed && parsed.token) {
+                token = parsed.token;
+            }
         }
         catch (e) {
-            // If parsing fails, fallback to raw token
-            parsedSession = { token: session.token, record: null };
+            // Not JSON, keep as is
         }
-        const sessionToStore = {
-            token: parsedSession.token,
-            record: parsedSession.record,
-            expirationDate: session.expirationDate,
-        };
+        const sessionToStore = { ...session, token };
         if (isMMKVAvailable && mmkv) {
             mmkv.set(SESSION_KEY, JSON.stringify(sessionToStore));
         }
@@ -169,7 +161,6 @@ export default class MyPlantClient {
         const res = await fetchFn(`${this.baseUrl}${path}`, fetchOptions);
         // Extract and update session cookie if present in response
         const setCookie = res.headers.get("set-cookie") || res.headers.get("Set-Cookie");
-        console.log(setCookie);
         if (setCookie) {
             // Find pb_auth cookie value
             const pb_auth_ = setCookie.match(/pb_auth=([^;]+);/);
@@ -186,13 +177,8 @@ export default class MyPlantClient {
                 await storage.setSession({ token: pbAuthCookie, expirationDate });
             }
         }
-        if (!res.ok) {
-            if (res.status === 401) {
-                // Session expired or invalid
-                throw new SessionExpiredError();
-            }
+        if (!res.ok)
             throw new Error(`Request failed: ${res.status}, ${await res.text()}`);
-        }
         return await res.json();
     }
 }

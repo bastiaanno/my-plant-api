@@ -1,6 +1,3 @@
-export declare class SessionExpiredError extends Error {
-    constructor(message?: string);
-}
 import type { Activity, ActivitySignup, PostWudjeRequest, RemoveRegistration, User, Wud } from "./types";
 type LoginResponse = {
     data: {
