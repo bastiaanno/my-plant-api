@@ -49,18 +49,19 @@ const USER_DATA_KEY = "pb_user_data";
 const SESSION_KEY = "pb_session";
 const storage = {
   setSession: async (session: Session) => {
-    // Ensure token is not double-encoded
-    let token = session.token;
+    // Always decode and parse pb_auth cookie as JSON
+    let parsedSession = null;
     try {
-      // If token is a JSON string, parse and extract token
-      const parsed = JSON.parse(decodeURIComponent(token));
-      if (parsed && parsed.token) {
-        token = parsed.token;
-      }
+      parsedSession = JSON.parse(decodeURIComponent(session.token));
     } catch (e) {
-      // Not JSON, keep as is
+      // If parsing fails, fallback to raw token
+      parsedSession = { token: session.token, record: null };
     }
-    const sessionToStore = { ...session, token };
+    const sessionToStore = {
+      token: parsedSession.token,
+      record: parsedSession.record,
+      expirationDate: session.expirationDate,
+    };
     if (isMMKVAvailable && mmkv) {
       mmkv.set(SESSION_KEY, JSON.stringify(sessionToStore));
     } else {
