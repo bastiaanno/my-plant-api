@@ -57,6 +57,16 @@ const storage = {
       // If parsing fails, fallback to raw token
       parsedSession = { token: session.token, record: null };
     }
+    // Only store session if token and record are valid
+    if (!parsedSession.token || parsedSession.record === null) {
+      // Clear session if expired or invalid
+      if (isMMKVAvailable && mmkv) {
+        mmkv.remove(SESSION_KEY);
+      } else {
+        storage._session = null;
+      }
+      return;
+    }
     const sessionToStore = {
       token: parsedSession.token,
       record: parsedSession.record,
