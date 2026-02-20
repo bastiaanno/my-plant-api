@@ -15,8 +15,17 @@ async function login() {
 }
 
 async function test() {
-  await login();
-  console.log("Logged in successfully!");
+  console.log("Testing MyPlantClient...");
+  const session = await client.getSession(); // Check if already logged in
+  if (session) {
+    const user = await client.getUser();
+    console.log(`Already logged in as `, user);
+  }
+  if (!session) {
+    console.log("Not logged in, logging in...");
+    await login();
+    console.log("Logged in successfully!");
+  }
   const activities = await client.getActivities();
   console.log(`Fetched ${activities.length} activities.`);
 
