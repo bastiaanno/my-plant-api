@@ -1,3 +1,10 @@
+// Custom error for session expiration/invalidity
+export class SessionExpiredError extends Error {
+    constructor(message = "Session expired or invalid.") {
+        super(message);
+        this.name = "SessionExpiredError";
+    }
+}
 // MMKV integration for React Native
 import { createMMKV } from "react-native-mmkv";
 const mmkv = createMMKV(); // Use default instance
@@ -177,8 +184,13 @@ export default class MyPlantClient {
                 await storage.setSession({ token: pbAuthCookie, expirationDate });
             }
         }
-        if (!res.ok)
+        if (!res.ok) {
+            if (res.status === 401) {
+                // Session expired or invalid
+                throw new SessionExpiredError();
+            }
             throw new Error(`Request failed: ${res.status}, ${await res.text()}`);
+        }
         return await res.json();
     }
 }
