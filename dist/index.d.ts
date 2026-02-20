@@ -14,7 +14,10 @@ type LoginResponse = {
     };
     header: string | null;
 };
-type Session = string;
+export type Session = {
+    token: string;
+    expirationDate?: Date;
+};
 export default class MyPlantClient {
     baseUrl: string;
     constructor(baseUrl?: string);

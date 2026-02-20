@@ -28,7 +28,10 @@ type LoginResponse = {
   header: string | null;
 };
 
-type Session = string; // This will be the pb_auth cookie value
+export type Session = {
+  token: string;
+  expirationDate?: Date;
+};
 
 // React Native compatibility: use global fetch
 const fetchFn: typeof fetch = globalThis.fetch.bind(globalThis);
@@ -36,21 +39,21 @@ const fetchFn: typeof fetch = globalThis.fetch.bind(globalThis);
 // Storage abstraction for pb_auth cookie
 const PB_AUTH_KEY = "pb_auth_cookie";
 const USER_DATA_KEY = "pb_user_data";
+const SESSION_KEY = "pb_session";
 const storage = {
-  set: async (value: string, userData?: any) => {
+  setSession: async (session: Session) => {
     if (isMMKVAvailable && mmkv) {
-      mmkv.set(PB_AUTH_KEY, value);
-      if (userData) mmkv.set(USER_DATA_KEY, JSON.stringify(userData));
+      mmkv.set(SESSION_KEY, JSON.stringify(session));
     } else {
-      storage._memory = value;
-      if (userData) storage._user = userData;
+      storage._session = session;
     }
   },
-  get: async (): Promise<string | null> => {
+  getSession: async (): Promise<Session | null> => {
     if (isMMKVAvailable && mmkv) {
-      return mmkv.getString(PB_AUTH_KEY) || null;
+      const str = mmkv.getString(SESSION_KEY);
+      return str ? JSON.parse(str) : null;
     } else {
-      return storage._memory || null;
+      return storage._session || null;
     }
   },
   setUser: async (userData: any) => {
@@ -68,16 +71,16 @@ const storage = {
       return storage._user || null;
     }
   },
-  _memory: null as string | null,
+  _session: null as Session | null,
   _user: null as any,
 };
 
 const clearStorage = () => {
   if (isMMKVAvailable && mmkv) {
     mmkv.remove(USER_DATA_KEY);
-    mmkv.remove(PB_AUTH_KEY);
+    mmkv.remove(SESSION_KEY);
   } else {
-    storage._memory = null;
+    storage._session = null;
     storage._user = null;
   }
 };
@@ -100,16 +103,22 @@ export default class MyPlantClient {
     const setCookie =
       res.headers.get("set-cookie") || res.headers.get("Set-Cookie");
     let pbAuthCookie = null;
+    let expirationDate: Date | undefined = undefined;
     if (setCookie) {
       // Find pb_auth cookie value
-      const match = setCookie.match(/pb_auth=([^;]+);/);
-      if (match) {
-        pbAuthCookie = match[1];
+      const pb_auth_ = setCookie.match(/pb_auth=([^;]+);/);
+      const expires_ = setCookie.match(/expires=([^;]+);/);
+      if (pb_auth_) {
+        pbAuthCookie = pb_auth_[1];
+      }
+      if (expires_) {
+        expirationDate = new Date(expires_[1]);
       }
     }
     if (pbAuthCookie) {
-      await storage.set(pbAuthCookie, data?.user);
-      console.log("Login successful, pb_auth cookie and user data stored.");
+      await storage.setSession({ token: pbAuthCookie, expirationDate });
+      if (data?.user) await storage.setUser(data.user);
+      console.log("Login successful, session and user data stored.");
     }
     return { data, header: setCookie };
   }
@@ -118,11 +127,7 @@ export default class MyPlantClient {
     clearStorage();
   }
   async getSession(): Promise<Session | null> {
-    const pbAuth = await storage.get();
-    if (pbAuth) {
-      return pbAuth;
-    }
-    return null;
+    return await storage.getSession();
   }
   async getUser(): Promise<User | null> {
     return await storage.getUser();
@@ -153,8 +158,8 @@ export default class MyPlantClient {
   }
 
   async _request(method: "GET" | "POST" | "DELETE", path: string, body?: any) {
-    const pbAuthCookie = await storage.get();
-    if (!pbAuthCookie && path !== "/login") {
+    const session = await storage.getSession();
+    if ((!session || !session.token) && path !== "/login") {
       throw new Error("Not authenticated. Please login first.");
     }
     const headers: Record<string, string> = {
@@ -165,8 +170,8 @@ export default class MyPlantClient {
       headers,
       body: body ? JSON.stringify(body) : undefined,
     };
-    if (pbAuthCookie) {
-      headers["Cookie"] = `pb_auth=${pbAuthCookie}`;
+    if (session && session.token) {
+      headers["Cookie"] = `pb_auth=${session.token}`;
     }
     const res = await fetchFn(`${this.baseUrl}${path}`, fetchOptions);
     if (!res.ok)
