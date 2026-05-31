@@ -1,48 +1,48 @@
 export type User = {
-    id: string;
-    name: string;
-    email: string;
-    username: string;
-    isAdmin: boolean;
-    registrationDate: Date;
+  id: string;
+  name: string;
+  email: string;
+  username: string;
+  isAdmin: boolean;
+  registrationDate: Date;
 };
 export type Activity = {
-    id: string;
-    title: string;
-    description: string;
-    venue: string;
-    startTime: Date;
-    endTime: Date;
-    signupDeadline: Date;
-    committee: string;
-    poster?: string;
-    totalSignUps: number;
-    userStatus: {
-        signedUp: boolean;
-        signupId?: string;
-        onWaitlist: boolean;
-        waitlistId?: string;
-    };
+  id: string;
+  title: string;
+  description: string;
+  venue: string;
+  startTime: Date;
+  endTime: Date;
+  signupDeadline: Date;
+  committee: string;
+  poster?: string;
+  totalSignUps: number;
+  userStatus: {
+    signedUp: boolean;
+    signupId?: string;
+    onWaitlist: boolean;
+    waitlistId?: string;
+  };
 };
 export type ActivitySignup = {
-    type: "signup" | "waitlist";
-    answers: {
-        [questionId: string]: string;
-    };
+  type: "signup" | "waitlist";
+  answers: {
+    [questionId: string]: string;
+  };
 };
 export type RemoveRegistration = {
-    registrationId: string;
+  activityId: string;
 };
 export type Wud = {
+  id: string;
+  message: string;
+  created: Date;
+  author: {
     id: string;
-    message: string;
-    created: Date;
-    author: {
-        id: string;
-        name: string;
-        username: string;
-    };
+    name: string;
+    username: string;
+  };
 };
 export type PostWudjeRequest = {
-    message: string;
+  message: string;
 };

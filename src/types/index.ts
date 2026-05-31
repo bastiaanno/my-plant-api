@@ -32,7 +32,7 @@ export type ActivitySignup = {
 };
 
 export type RemoveRegistration = {
-  registrationId: string;
+  activityId: string;
 };
 
 export type Wud = {
