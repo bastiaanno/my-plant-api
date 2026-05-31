@@ -10,7 +10,10 @@ export type Activity = {
     id: string;
     title: string;
     description: string;
-    datetime: Date;
+    venue: string;
+    startTime: Date;
+    endTime: Date;
+    signupDeadline: Date;
     committee: string;
     poster?: string;
     totalSignUps: number;
@@ -28,8 +31,7 @@ export type ActivitySignup = {
     };
 };
 export type RemoveRegistration = {
-    type: "signout";
-    id: string;
+    registrationId: string;
 };
 export type Wud = {
     id: string;

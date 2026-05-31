@@ -35,7 +35,9 @@ export default class MyPlantClient {
         return this._request("POST", `/activities/${id}`, info);
     }
     async removeActivity(info) {
-        return this._request("DELETE", `/activities/${info.id}`, info);
+        return this._request("DELETE", `/activities/${info.registrationId}`, {
+            type: "signup",
+        });
     }
     async getWudjes() {
         return (await this._request("GET", "/wudjes")).items;

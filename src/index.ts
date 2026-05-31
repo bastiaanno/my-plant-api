@@ -64,7 +64,9 @@ export default class MyPlantClient {
   }
 
   async removeActivity(info: RemoveRegistration) {
-    return this._request("DELETE", `/activities/${info.id}`, info);
+    return this._request("DELETE", `/activities/${info.registrationId}`, {
+      type: "signup",
+    });
   }
 
   async getWudjes(): Promise<Wud[]> {

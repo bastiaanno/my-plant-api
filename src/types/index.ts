@@ -11,10 +11,10 @@ export type Activity = {
   id: string;
   title: string;
   description: string;
-  // venue: string; // Not currently provided by the API, but could be added in the future
-  datetime: Date;
-  //endTime: Date; // Not currently provided by the API, but could be added in the future
-  //signupDeadline: Date; // Not currently provided by the API, but could be added in the future
+  venue: string;
+  startTime: Date;
+  endTime: Date;
+  signupDeadline: Date;
   committee: string;
   poster?: string;
   totalSignUps: number;
@@ -32,8 +32,7 @@ export type ActivitySignup = {
 };
 
 export type RemoveRegistration = {
-  type: "signout";
-  id: string;
+  registrationId: string;
 };
 
 export type Wud = {
