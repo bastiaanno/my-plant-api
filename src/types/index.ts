@@ -24,6 +24,13 @@ export type Activity = {
     onWaitlist: boolean;
     waitlistId?: string;
   };
+  form: [
+    {
+      id: string;
+      question: string;
+      options?: string[]; // For multiple-choice questions
+    },
+  ];
 };
 
 export type ActivitySignup = {
