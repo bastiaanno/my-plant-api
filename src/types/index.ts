@@ -56,3 +56,16 @@ export type Wud = {
 export type PostWudjeRequest = {
   message: string;
 };
+
+export type ApiError = {
+  message: string;
+  status?: number;
+  isAuthError: boolean;
+  isNetworkError: boolean;
+};
+
+export type ApiStatus = {
+  isAvailable: boolean;
+  error: ApiError | null;
+  isLoading: boolean;
+};

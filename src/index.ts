@@ -1,6 +1,8 @@
 import type {
   Activity,
   ActivitySignup,
+  ApiError,
+  ApiStatus,
   PostWudjeRequest,
   RemoveRegistration,
   Wud,
@@ -18,6 +20,8 @@ type LoginResponse = {
     registrationDate: Date;
   };
 };
+
+export type { ApiError, ApiStatus };
 
 // React Native compatibility: use global fetch if available, otherwise require node-fetch
 const getFetch = () => {
@@ -87,7 +91,32 @@ export default class MyPlantClient {
       headers,
       body: body ? JSON.stringify(body) : undefined,
     });
-    if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+    if (!res.ok) {
+      const error: ApiError = {
+        message: `Request failed: ${res.status} ${res.statusText}`,
+        status: res.status,
+        isAuthError: res.status === 401 || res.status === 403,
+        isNetworkError: false,
+      };
+      throw error;
+    }
     return await res.json();
+  }
+
+  getApiStatus(): ApiStatus {
+    return {
+      isAvailable: true,
+      error: null,
+      isLoading: false,
+    };
+  }
+
+  createApiError(status: number, message: string, isNetworkError = false): ApiError {
+    return {
+      message,
+      status,
+      isAuthError: status === 401 || status === 403,
+      isNetworkError,
+    };
   }
 }
